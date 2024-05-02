@@ -1,0 +1,126 @@
+
+AIM:
+To design A SUITABLE FILTER TO SUPPRESS NOISE FROM ECG SIGNAL AND
+MEASURE THE EFFICIENCY OF THE FILTER IN TERMS OF CORRELATION INDEX
+Code
+% ECG Signal Generation and Analysis
+clear;
+close all;
+clc;
+% Generate dynamic ECG signal
+fs = 1000; % Sampling frequency (Hz)
+T = 10; % Duration (s)
+[ecg, t] = generate_dynamic_ecg(fs, T);
+% Add baseline wander and noise to the ECG signal
+ecg_noisy = add_noise(ecg, t);
+% Filter noisy ECG signal using a Butterworth low-pass filter
+ecg_filtered = filter_ecg(ecg_noisy, fs);
+% Measure the efficiency in terms of correlation coefficient index
+correlation_index = corrcoef(ecg, ecg_filtered);
+correlation_coefficient = correlation_index(1, 2); % Extract correlation coefficient
+% Plot the ECG signals
+plot_ecg_signals(t, ecg_noisy, ecg_filtered, fs);
+% Display correlation coefficient
+fprintf('Correlation Coefficient: %.4f\n', correlation_coefficient);
+% Generate dynamic ECG signal
+function [ecg, t] = generate_dynamic_ecg(fs, T)
+t = 0:1/fs:T-1/fs; % Time vector
+ecg = zeros(size(t));
+% Generate P waves
+p_wave = ecg_wave(fs, T, 0.1, 0.07, 0.015, 0.2, 0.03, 0.1);
+% Generate QRS complex
+qrs = ecg_wave(fs, T, 1, 0.1, 0.06, 0.4, 0.02, 0.05);
+% Generate T waves
+t_wave = ecg_wave(fs, T, 0.15, 0.1, 0.12, 0.6, 0.02, 0.05);
+% Combine waves
+ecg = p_wave + qrs + t_wave;
+end
+% Generate individual ECG waves with realistic variations
+function wave = ecg_wave(fs, T, amplitude, duration, width, offset, jitter_amp, jitter_freq)
+t = 0:1/fs:T-1/fs; % Time vector
+wave = zeros(size(t));
+num_cycles = round(T / duration);
+for i = 1:num_cycles
+cycle_start = (i - 1) * duration;
+cycle_end = cycle_start + width;
+cycle_idx = t >= cycle_start & t <= cycle_end;
+cycle_t = t(cycle_idx);
+cycle_wave = amplitude * sin(2 * pi * (cycle_t - cycle_start) / width) + offset;
+% Add jitter to the wave shape and timing
+jitter = jitter_amp * sin(2 * pi * jitter_freq * cycle_t);
+cycle_wave = cycle_wave + jitter;
+wave(cycle_idx) = cycle_wave;
+end
+end
+% Add baseline wander and noise to the ECG signal
+function ecg_noisy = add_noise(ecg, t)
+% Baseline wander
+bw_freq = 0.05; % Baseline wander frequency (Hz)
+bw_amp = 0.02; % Baseline wander amplitude
+baseline_wander = bw_amp * sin(2*pi*bw_freq*t);
+% High-frequency noise (muscle noise)
+hf_noise_amp = 0.05; % High-frequency noise amplitude
+hf_noise = hf_noise_amp * randn(size(ecg));
+% Low-frequency noise (baseline drift)
+lf_noise_amp = 0.01; % Low-frequency noise amplitude
+lf_noise = lf_noise_amp * randn(size(ecg));
+% Powerline interference (50/60 Hz)
+powerline_freq = 50; % Powerline interference frequency (Hz)
+powerline_amp = 0.03; % Powerline interference amplitude
+powerline_noise = powerline_amp * sin(2*pi*powerline_freq*t);
+% Combine noise components
+noise = hf_noise + lf_noise + powerline_noise;
+% Add noise to the ECG signal
+ecg_noisy = ecg + baseline_wander + noise;
+end
+% Filter noisy ECG signal using a Butterworth low-pass filter
+function ecg_filtered = filter_ecg(ecg_noisy, fs)
+order = 4; % Filter order
+cutoff_freq = 50; % Cutoff frequency (Hz)
+[b, a] = butter(order, cutoff_freq/(fs/2), 'low'); % Design Butterworth low-pass filter
+ecg_filtered = filtfilt(b, a, ecg_noisy); % Zero-phase filtering
+end
+% Plot the ECG signals
+function plot_ecg_signals(t, ecg_noisy, ecg_filtered, fs)
+figure;
+subplot(2, 1, 1);
+plot(t, ecg_noisy);
+title('Noisy ECG Signal');
+xlabel('Time (s)');
+ylabel('Amplitude');
+subplot(2, 1, 2);
+plot(t, ecg_filtered);
+title('Filtered ECG Signal');
+xlabel('Time (s)');
+ylabel('Amplitude');
+end
+clc
+clear all
+Fs = 1000;
+t = 0:1/Fs:1-1/Fs;
+A = [1 0.7 0.5 0.3];
+f = [15 20 25 30];
+[T,F] = meshgrid(t,f);
+ecgSignal = sum(A' .* sin(2*pi*F.*T), 1);
+noiseAmplitude = 0.15;
+noise = noiseAmplitude * randn(size(t));
+ecgSignal2 = ecgSignal + noise;
+cutoffFreq = 220;
+[b,a] = butter(6, cutoffFreq/(Fs/2));
+filteredECG = filter(b, a, ecgSignal2);
+corrCoeff = corrcoef(ecgSignal2, filteredECG);
+disp('Correlation Coefficient:');
+disp(corrCoeff(1,2));
+figure;
+plotEC(t, ecgSignal, 'Original ECG Signal ');
+figure;
+subplot(2,1,1);
+plotEC(t, ecgSignal2, 'Original ECG Signal with Noise');
+subplot(2,1,2);
+plotEC(t, filteredECG, 'Filtered ECG Signal');
+function plotEC(t, signal, titleStr)
+plot(t, signal);
+title(titleStr);
+xlabel('Time (s)');
+ylabel('Amplitude');
+end
